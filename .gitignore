@@ -1,0 +1,21 @@
+# Keil MDK 构建产物
+OBJ/
+*.uvguix*
+*.bak
+*.dep
+*.map
+*.lst
+*.htm
+*.axf
+*.hex
+*.crf
+*.o
+*.d
+*.lnp
+*.sct
+*.build_log.htm
+*.htm
+USER/DebugConfig/
+
+# 敏感凭据(不入库, 使用模板 wifi_credentials.h.template 创建)
+CONFIG/wifi_credentials.h
