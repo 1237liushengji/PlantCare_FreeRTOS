@@ -1,4 +1,4 @@
-#include "display.h"
+﻿#include "display.h"
 #include "oled_iic.h"
 #include "data.h"
 #include "app_error.h"

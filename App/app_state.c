@@ -1,4 +1,4 @@
-#include "app_state.h"
+﻿#include "app_state.h"
 #include "data.h"
 #include "control.h"
 #include "display.h"

@@ -1,4 +1,4 @@
-#include "control.h"
+﻿#include "control.h"
 #include "config.h"
 #include "data.h"
 #include "display.h"
