@@ -18,7 +18,9 @@ int main(void)
 	HZ = GB16_NUM();                    //初始化中文字库索引
 	delay_init();                       //延时函数初始化(FreeRTOS模式, SysTick 1ms)
 	delay_ms(100);
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);   //中断优先级分组2
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);   //中断优先级分组4(4位全为抢占优先级)
+	                 //TIM2抢占=5、USART1抢占=6 直接对应全优先级5/6, 满足FreeRTOS">=5"要求
+	                 //(原分组2只有2位抢占位, 抢占优先级只能0~3, 5/6无效导致FreeRTOS校验失败)
 	uart1_init(115200);                 //串口1(ESP8266)
 	TIM2_Int_Init(TIMER_ARR, TIMER_PSC);  //100ms心跳定时器(调度器启动后由System任务使能)
 	IWDG_Init();                        //独立看门狗约2.5s超时(空闲任务钩子喂狗)

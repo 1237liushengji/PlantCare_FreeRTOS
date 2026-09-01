@@ -74,7 +74,12 @@ Init 阶段带重试地初始化 AHT20 与 WiFi，之后进入 Auto/Manual；
 
 ## 5. 中断配置（FreeRTOS 要求）
 
-NVIC 分组 2。可调用 FreeRTOS API 的中断优先级数值必须 ≥ 5：
+NVIC 分组 **4**（4 位全为抢占优先级），TIM2=5、USART1=6 直接对应全优先级 5/6。
+可调用 FreeRTOS API 的中断优先级数值必须 ≥ 5：
+（原配置「分组 2」下抢占优先级 5 无效——分组 2 只有 2 位抢占位(0~3)，
+`(5<<2|0)<<4 = 0x40` 恰好 < `configMAX_SYSCALL_INTERRUPT_PRIORITY=0x50`，
+导致 TIM2 中断调 `vTaskNotifyGiveFromISR` 时触发 port.c 的 configASSERT；
+已改为分组 4 修复。）
 
 | 中断 | 抢占优先级 | 说明 |
 |------|-----------|------|
