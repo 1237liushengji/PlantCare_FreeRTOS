@@ -1,4 +1,4 @@
-﻿#include "control.h"
+#include "control.h"
 #include "config.h"
 #include "data.h"
 #include "display.h"
@@ -545,13 +545,13 @@ void Sensor_Update(void)
 
 	if(adc_raw > ADC_OPEN_CIRCUIT_RAW)
 	{
-		Error_Set(ERR_ADC_FAIL);
+		/* 土壤传感器开路: 仅显示异常, 不进入系统错误态
+		 * (WiFi/温度/湿度/光照等其余功能不受影响, 也不再出现ErrorADC/Retry) */
 		g_plant.sensor.soil_humi = 0;
 		LOG_WARN("ADC Open Circuit");
 	}
 	else
 	{
-		Error_Clear(ERR_ADC_FAIL);
 		/* 定点化原浮点公式: soil = ((4095-adc)*3.3/4096*100 - 84) / 1.53 */
 		soil_v = ((4095u - adc_raw) * 330u) / 4096u;
 		if(soil_v > 84u)

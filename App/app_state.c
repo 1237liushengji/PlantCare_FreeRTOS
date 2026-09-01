@@ -1,4 +1,4 @@
-﻿#include "app_state.h"
+#include "app_state.h"
 #include "data.h"
 #include "control.h"
 #include "display.h"
@@ -354,16 +354,6 @@ void Error_Task(void)
                     Error_Clear(ERR_AHT20_INIT);
                     Error_Clear(ERR_SENSOR_TIMEOUT);
                     LOG_INFO("AHT20 Recovery Success");
-                    StateMachine_Recover();
-                    return;
-                }
-                break;
-            case ERR_ADC_FAIL:
-                Adc_Init();
-                if(Get_Adc_Average(ADC_Channel_1, 4) < ADC_OPEN_CIRCUIT_RAW)
-                {
-                    Error_Clear(ERR_ADC_FAIL);
-                    LOG_INFO("ADC Recovery Success");
                     StateMachine_Recover();
                     return;
                 }
