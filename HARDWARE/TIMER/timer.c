@@ -43,3 +43,52 @@ void TIM2_IRQHandler(void)
 		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 	}
 }
+
+/* ==================== TIM3_CH3(PB0) PWM: 风扇无级调速 ==================== */
+#define FAN_PWM_ARR  999    /* 自动重装载值: 配合PSC得到1kHz PWM */
+#define FAN_PWM_PSC  71     /* 预分频: 72MHz/72 = 1MHz计数 */
+
+void TIM3_PWM_Init(void)
+{
+	GPIO_InitTypeDef GPIOInitStructure;
+	TIM_TimeBaseInitTypeDef TIMInitStructure;
+	TIM_OCInitTypeDef TIMOCInitStructure;
+
+	/* 使能GPIOB(风扇引脚PB0)、TIM3、AFIO时钟 */
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOB, ENABLE);
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM3, ENABLE);
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
+
+	/* TIM3_CH3 = PB0(风扇), 复用推挽输出 */
+	GPIOInitStructure.GPIO_Mode  = GPIO_Mode_AF_PP;
+	GPIOInitStructure.GPIO_Pin   = GPIO_Pin_0;
+	GPIOInitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOB, &GPIOInitStructure);
+
+	/* 定时器基础配置 */
+	TIMInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+	TIMInitStructure.TIM_CounterMode   = TIM_CounterMode_Up;
+	TIMInitStructure.TIM_Period        = FAN_PWM_ARR;
+	TIMInitStructure.TIM_Prescaler     = FAN_PWM_PSC;
+	TIM_TimeBaseInit(TIM3, &TIMInitStructure);
+
+	/* PWM模式1, 高电平有效 */
+	TIMOCInitStructure.TIM_OCMode      = TIM_OCMode_PWM1;
+	TIMOCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	TIMOCInitStructure.TIM_OCPolarity  = TIM_OCPolarity_High;
+	TIM_OC3Init(TIM3, &TIMOCInitStructure);
+	TIM_OC3PreloadConfig(TIM3, TIM_OCPreload_Enable);
+	TIM_ARRPreloadConfig(TIM3, ENABLE);
+	TIM_Cmd(TIM3, ENABLE);
+	TIM_SetCompare3(TIM3, 0);   /* 初始停转 */
+}
+
+/* 风扇转速控制: duty 0~100(%) */
+void Fan_SetSpeed(u8 duty)
+{
+	u32 cmp = ((u32)duty * FAN_PWM_ARR) / 100u;
+
+	if(cmp > FAN_PWM_ARR)
+		cmp = FAN_PWM_ARR;
+	TIM_SetCompare3(TIM3, (u16)cmp);
+}

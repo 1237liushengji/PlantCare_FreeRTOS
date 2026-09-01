@@ -4,7 +4,7 @@
 /* ==================== 默认阈值参数 ==================== */
 #define DEFAULT_TEMP_THRESHOLD      30      /* 环境温度阈值 ℃ */
 #define DEFAULT_HUMIDITY_THRESHOLD  60      /* 环境湿度阈值 %RH */
-#define DEFAULT_SOIL_THRESHOLD      40      /* 土壤湿度阈值 % */
+#define DEFAULT_SOIL_THRESHOLD      60      /* 土壤湿度阈值 %(低于此值浇水; 显示: <阈值=过低, 阈值~阈值+20=正常, >阈值+20=过高) */
 #define DEFAULT_LIGHT_THRESHOLD     50      /* 光照强度阈值 lux */
 
 /* ==================== WiFi / 云平台参数 ==================== */

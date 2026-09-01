@@ -45,7 +45,7 @@ void StateMachine_Set(SysState_t state)
     if(state == SYS_ERROR)
     {
         WATER = 0;
-        FAN   = 0;
+        Fan_SetSpeed(0);   /* 风扇PWM停转(APP手动开关g_fan_on仍保留, 恢复后沿用) */
         LED_zm = 0;
         JSQ   = 0;
     }
@@ -99,6 +99,7 @@ void Boot_Task(void)
             LOG_INFO("System Boot - Step 1: GPIO Init");
             KEY_Init();
             LED_Init();
+            TIM3_PWM_Init();   /* 风扇PWM(TIM3_CH3/PB0), 温度超阈值时无级调速 */
             Adc_Init();
             IIC_Init();
             Threshold_Load();   /* EEPROM阈值恢复(依赖IIC_Init完成) */

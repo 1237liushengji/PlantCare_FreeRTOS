@@ -6,6 +6,25 @@
 #include "stdio.h"
 #include "delay.h"
 
+/* 传感器类错误: 保留主页面显示(故障项显示"--"), 不整屏替换为错误页 */
+static u8 Display_IsSensorError(ErrorCode_t code)
+{
+	return (code == ERR_ADC_FAIL || code == ERR_SENSOR_TIMEOUT ||
+	        code == ERR_AHT20_INIT || code == ERR_SOIL_SENSOR ||
+	        code == ERR_LIGHT_SENSOR);
+}
+
+/* 土壤湿度状态: 低于阈值=过低, 阈值~阈值+20=正常, 高于阈值+20=过高
+ * (阈值默认为60, 即 <60过低, 60~80正常, >80过高; 随APP/按键设置联动) */
+static const char *Soil_StatusText(void)
+{
+	if(g_plant.sensor.soil_humi < g_plant.threshold.soil_l)
+		return "过低";
+	if(g_plant.sensor.soil_humi > (u8)(g_plant.threshold.soil_l + 20))
+		return "过高";
+	return "正常";
+}
+
 /* 统一显示入口: 由System任务每500ms调用一次, 所有OLED绘制收敛到单任务,
  * 避免Key任务与System任务分帧绘制导致画面撕裂 */
 void Display_Update(void)
@@ -32,10 +51,10 @@ void Display_Update(void)
 	else
 	{
 		s_last_set_cs = 0;
-		if(g_plant.sys.error != ERR_OK)
-			Display_ErrorPage();
+		if(g_plant.sys.error != ERR_OK && !Display_IsSensorError(g_plant.sys.error))
+			Display_ErrorPage();   /* 系统类错误(WiFi/云/OLED): 全屏错误页 */
 		else
-			Display_MainPage();
+			Display_MainPage();    /* 正常或传感器类错误: 主页面(故障项显示--) */
 	}
 }
 
@@ -72,13 +91,23 @@ void Display_SetParameters(void)
 void Display_MainPage(void)
 {
 	OLED_ShowCH(0, 0, (u8*)"土壤:");
-	OLED_ShowNum(40, 0, g_plant.sensor.soil_humi, 2, 1);
-	if(g_plant.sensor.soil_humi < 10)
-		OLED_ShowCH(48, 0, (u8*)"%  ");
-	else if(g_plant.sensor.soil_humi >= 10 && g_plant.sensor.soil_humi < 100)
-		OLED_ShowCH(56, 0, (u8*)"% ");
-	else if(g_plant.sensor.soil_humi >= 100 && g_plant.sensor.soil_humi < 1000)
-		OLED_ShowCH(64, 0, (u8*)"%");
+	if(g_plant.sys.error == ERR_ADC_FAIL)
+	{
+		/* 土壤传感器开路: 数值与状态显示"--", 温度/湿度/光照等其余各项正常显示 */
+		OLED_ShowCH(40, 0, (u8*)"--");
+		OLED_ShowCH(96, 0, (u8*)"--");
+	}
+	else
+	{
+		OLED_ShowNum(40, 0, g_plant.sensor.soil_humi, 2, 1);
+		if(g_plant.sensor.soil_humi < 10)
+			OLED_ShowCH(48, 0, (u8*)"%  ");
+		else if(g_plant.sensor.soil_humi >= 10 && g_plant.sensor.soil_humi < 100)
+			OLED_ShowCH(56, 0, (u8*)"% ");
+		else if(g_plant.sensor.soil_humi >= 100 && g_plant.sensor.soil_humi < 1000)
+			OLED_ShowCH(64, 0, (u8*)"%");
+		OLED_ShowCH(96, 0, (u8*)Soil_StatusText());
+	}
 
 	OLED_ShowCH(0, 2, (u8*)"光照:");
 	OLED_ShowNum(40, 2, g_plant.sensor.light, 2, 1);
@@ -106,11 +135,6 @@ void Display_MainPage(void)
 		OLED_ShowCH(56, 6, (u8*)"%RH ");
 	else if(g_plant.sensor.humidity >= 100 && g_plant.sensor.humidity < 1000)
 		OLED_ShowCH(54, 6, (u8*)"%RH");
-
-	if(g_plant.alarm.soil)
-		OLED_ShowCH(96, 0, (u8*)"超标");
-	else
-		OLED_ShowCH(96, 0, (u8*)"正常");
 
 	if(g_plant.alarm.light)
 		OLED_ShowCH(96, 2, (u8*)"超标");

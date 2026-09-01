@@ -23,7 +23,7 @@ USER/main.c        仅初始化 + App_Task_Init() + vTaskStartScheduler()
 │   ├─ app_state    状态机: Boot->Init->Auto/Manual/Alarm/Error
 │   ├─ app_log      日志输出(printf互斥)
 │   └─ app_error    错误码与错误队列
-├─ USER/control.c  传感器采集/自动控制/WiFi初始化/APP指令解析/阈值EEPROM持久化
+├─ USER/control.c  传感器采集/自动控制(风扇PWM调速)/WiFi初始化/APP指令解析/阈值EEPROM持久化
 ├─ USER/display.c  OLED各页面(统一显示入口Display_Update, 单任务绘制)
 ├─ SYSTEM/         delay(FreeRTOS版) / usart(printf互斥+接收修复) / sys(含IWDG)
 └─ HARDWARE/       驱动(OLED驱动层自带互斥, 24CXX阈值存储, AHT20等)
@@ -36,7 +36,7 @@ int main(void)
 {
     HZ = GB16_NUM();
     delay_init();
-    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);
+    NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
     uart1_init(115200);
     TIM2_Int_Init(TIMER_ARR, TIMER_PSC);
     App_Task_Init();       // 创建全部任务
@@ -58,6 +58,14 @@ int main(void)
 状态机内部仍按重构版节奏工作：Boot 分步初始化（GPIO→OLED→任务确认），
 Init 阶段带重试地初始化 AHT20 与 WiFi，之后进入 Auto/Manual；
 传感器采集与自动控制在 Auto 状态下每 500ms 执行一次（`PERIOD_SENSOR`）。
+
+- **风扇 PWM 调速**：环境温度超过阈值（默认 30℃）时，按超出程度无级调速
+  （每超 1℃ 加 10% 转速、上限 100%，TIM3_CH3/PB0 输出 1kHz PWM）；
+  手动模式沿用 APP 开关（开=100%）。
+- **土壤湿度状态显示**：低于阈值=过低，阈值~阈值+20=正常，高于阈值+20=过高
+  （默认阈值 60 → 即 <60 过低 / 60~80 正常 / >80 过高，随 APP/按键设置联动）；
+  土壤传感器开路时该行显示 `--`，温度/湿度/光照等其余各项照常显示
+  （传感器类错误不再整屏替换为错误页，仅 WiFi/云/OLED 等系统错误才显示全屏错误页）。
 
 ## 4. 同步与互斥
 

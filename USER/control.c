@@ -16,9 +16,13 @@
 #include "stdio.h"
 #include "string.h"
 #include "24cxx.h"
+#include "timer.h"
 
 /* WiFi初始化忙标志: 初始化期间Log任务暂停打印, 避免日志插入AT/透传时序 */
 volatile u8 g_wifi_busy = 0;
+
+/* 风扇逻辑开关(APP手动模式记录), 实际转速由TIM3_CH3 PWM控制 */
+u8 g_fan_on = 0;
 
 /* 阈值EEPROM存储地址(24C02, 0~255) */
 #define EEPROM_THRESHOLD_ADDR   0x00
@@ -273,7 +277,7 @@ void Ping(void)
 		g_plant.sensor.light, g_plant.alarm.light, g_plant.threshold.light_l,
 		g_plant.sensor.temperature, g_plant.alarm.temp, g_plant.threshold.temp_h,
 		g_plant.sensor.humidity, g_plant.alarm.humi, g_plant.threshold.humi_l,
-		g_plant.sys.run_mode, WATER, LED_zm, FAN, JSQ,
+		g_plant.sys.run_mode, WATER, LED_zm, g_fan_on, JSQ,
 		g_plant.sys.error);
 	USART1_SendString(postData);   /* 整串发送, 保证一行数据不被日志拆散 */
 
@@ -448,8 +452,9 @@ void APP_Control(void)
 			}
 			if(Str_HasWord(USART_RX_BUF, "fan"))
 			{
-				FAN = !FAN;
-				LOG_INFO(FAN ? "APP Control Fan ON" : "APP Control Fan OFF");
+				g_fan_on = !g_fan_on;
+				Fan_SetSpeed(g_fan_on ? 100 : 0);
+				LOG_INFO(g_fan_on ? "APP Control Fan ON" : "APP Control Fan OFF");
 			}
 			if(Str_HasWord(USART_RX_BUF, "jsq"))
 			{
@@ -593,6 +598,17 @@ void Sensor_Update(void)
 	}
 }
 
+/* 温度超出阈值时的风扇转速: 每超1°C增加10%转速, 最高100% */
+static u8 Fan_SpeedFromTemp(u8 temp, u8 thresh)
+{
+	u8 speed;
+
+	if(temp <= thresh)
+		return 0;
+	speed = (u8)((temp - thresh) * 10u);
+	return (speed > 100u) ? 100u : speed;
+}
+
 /* 自动模式根据阈值控制执行机构并记录报警标志 */
 void Auto_Control(void)
 {
@@ -609,20 +625,24 @@ void Auto_Control(void)
 	u8 water_out;
 	u8 led_out;
 
-	/*    */
+	/* 风扇: 温度超阈值时按超出程度PWM调速(自动), 手动模式沿用APP开关 */
 	if(g_plant.sensor.temperature > g_plant.threshold.temp_h)
 	{
 		g_plant.alarm.temp = 1;
-		fan_out = (g_plant.sys.run_mode == 0) ? 1 : (u8)FAN;
+		if(g_plant.sys.run_mode == 0)
+			Fan_SetSpeed(Fan_SpeedFromTemp(g_plant.sensor.temperature, g_plant.threshold.temp_h));
+		else
+			Fan_SetSpeed(g_fan_on ? 100 : 0);
+		fan_out = (g_plant.sys.run_mode == 0) ? 1 : (u8)g_fan_on;
 		Log_AlarmEdge(&last_warn_temp, 1, "Temperature High");
 	}
 	else
 	{
 		g_plant.alarm.temp = 0;
-		fan_out = (g_plant.sys.run_mode == 0) ? 0 : (u8)FAN;
+		Fan_SetSpeed(0);
+		fan_out = 0;
 		Log_AlarmEdge(&last_warn_temp, 0, "Temperature High");
 	}
-	FAN = fan_out;
 	if(g_plant.sys.run_mode == 0)
 		Log_ActuatorEdge(&last_fan, fan_out, "Fan ON", "Fan OFF");
 
