@@ -1,5 +1,11 @@
 ﻿#include "myiic.h"
 #include "delay.h"
+
+#if SYSTEM_SUPPORT_OS
+#include "FreeRTOS.h"
+#include "semphr.h"
+extern SemaphoreHandle_t IIC_Mutex;   /* 软件I2C总线(PB6/7: AHT20+24C02共用)互斥量, 定义于App/app_task.c */
+#endif
  
 //初始化IIC
 void IIC_Init(void)
@@ -132,7 +138,7 @@ u8 IIC_Read_Byte(unsigned char ack)
   * @param  buf: uint8数据数组
   * @retval 0,正常; 其他,错误代码;
   */
-uint8_t Soft_I2C_Write(uint8_t dev_addr, uint8_t reg_addr, uint8_t len, unsigned char *data_buf)
+static uint8_t Soft_I2C_Write_Inner(uint8_t dev_addr, uint8_t reg_addr, uint8_t len, unsigned char *data_buf)
 {
     uint8_t i;
 	
@@ -159,6 +165,20 @@ uint8_t Soft_I2C_Write(uint8_t dev_addr, uint8_t reg_addr, uint8_t len, unsigned
     IIC_Stop_AHT20();
 	return 0;
 }
+
+/* 总线互斥封装: 防止System任务(AHT20采集)与Key任务(24C02阈值保存)同时占用软件I2C总线 */
+uint8_t Soft_I2C_Write(uint8_t dev_addr, uint8_t reg_addr, uint8_t len, unsigned char *data_buf)
+{
+	uint8_t r;
+#if SYSTEM_SUPPORT_OS
+	if(IIC_Mutex != NULL) xSemaphoreTake(IIC_Mutex, portMAX_DELAY);
+#endif
+	r = Soft_I2C_Write_Inner(dev_addr, reg_addr, len, data_buf);
+#if SYSTEM_SUPPORT_OS
+	if(IIC_Mutex != NULL) xSemaphoreGive(IIC_Mutex);
+#endif
+	return r;
+}
  
 /**
   * @brief  从I2C设备连续读数据（适用于符合IIC通信协议的寄存器地址为uint8类型的器件）
@@ -168,10 +188,8 @@ uint8_t Soft_I2C_Write(uint8_t dev_addr, uint8_t reg_addr, uint8_t len, unsigned
   * @param  buf: uint8数据数组
   * @retval 0,正常; 其他,错误代码;
   */
-uint8_t Soft_I2C_Read(uint8_t dev_addr, uint8_t reg_addr, uint8_t len, unsigned char *data_buf)
+static uint8_t Soft_I2C_Read_Inner(uint8_t dev_addr, uint8_t reg_addr, uint8_t len, unsigned char *data_buf)
 {
-//	uint8_t result;
-	
 	IIC_Start_AHT20();
 	IIC_Send_Byte(dev_addr << 1 | I2C_Direction_Transmitter);//发送器件地址+写命令
 	if(IIC_Wait_Ack())//等待应答
@@ -196,4 +214,18 @@ uint8_t Soft_I2C_Read(uint8_t dev_addr, uint8_t reg_addr, uint8_t len, unsigned 
 	}
     IIC_Stop_AHT20();//产生一个停止条件
 	return 0;
+}
+
+/* 总线互斥封装: 防止System任务(AHT20采集)与Key任务(24C02阈值保存)同时占用软件I2C总线 */
+uint8_t Soft_I2C_Read(uint8_t dev_addr, uint8_t reg_addr, uint8_t len, unsigned char *data_buf)
+{
+	uint8_t r;
+#if SYSTEM_SUPPORT_OS
+	if(IIC_Mutex != NULL) xSemaphoreTake(IIC_Mutex, portMAX_DELAY);
+#endif
+	r = Soft_I2C_Read_Inner(dev_addr, reg_addr, len, data_buf);
+#if SYSTEM_SUPPORT_OS
+	if(IIC_Mutex != NULL) xSemaphoreGive(IIC_Mutex);
+#endif
+	return r;
 }

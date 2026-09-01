@@ -1,5 +1,11 @@
 ﻿#include "24cxx.h" 
 #include "delay.h"
+
+#if SYSTEM_SUPPORT_OS
+#include "FreeRTOS.h"
+#include "semphr.h"
+extern SemaphoreHandle_t IIC_Mutex;   /* 软件I2C总线互斥量(定义于App/app_task.c) */
+#endif
 //////////////////////////////////////////////////////////////////////////////////	 
 //本程序只供学习使用，未经作者许可，不得用于其它任何用途
 //ALIENTEK精英STM32开发板
@@ -26,6 +32,9 @@ void AT24CXX_Init(void)
 u8 AT24CXX_ReadOneByte(u16 ReadAddr)
 {				  
 	u8 temp=0;		  	    																 
+#if SYSTEM_SUPPORT_OS
+	if(IIC_Mutex != NULL) xSemaphoreTake(IIC_Mutex, portMAX_DELAY);
+#endif
     IIC_Start_AHT20();  
 	if(EE_TYPE>AT24C16)
 	{
@@ -43,13 +52,19 @@ u8 AT24CXX_ReadOneByte(u16 ReadAddr)
 	IIC_Wait_Ack();	 
     temp=IIC_Read_Byte(0);		   
     IIC_Stop_AHT20();//产生一个停止条件	    
+#if SYSTEM_SUPPORT_OS
+	if(IIC_Mutex != NULL) xSemaphoreGive(IIC_Mutex);
+#endif
 	return temp;
 }
 //在AT24CXX指定地址写入一个数据
 //WriteAddr  :写入数据的目的地址    
 //DataToWrite:要写入的数据
 void AT24CXX_WriteOneByte(u16 WriteAddr,u8 DataToWrite)
-{				   	  	    																 
+{
+#if SYSTEM_SUPPORT_OS
+	if(IIC_Mutex != NULL) xSemaphoreTake(IIC_Mutex, portMAX_DELAY);
+#endif				   	  	    																 
     IIC_Start_AHT20();  
 	if(EE_TYPE>AT24C16)
 	{
@@ -66,7 +81,10 @@ void AT24CXX_WriteOneByte(u16 WriteAddr,u8 DataToWrite)
 	IIC_Send_Byte(DataToWrite);     //发送字节							   
 	IIC_Wait_Ack();  		    	   
     IIC_Stop_AHT20();//产生一个停止条件 
-	delay_ms(10);	 
+	delay_ms(10);
+#if SYSTEM_SUPPORT_OS
+	if(IIC_Mutex != NULL) xSemaphoreGive(IIC_Mutex);
+#endif	 
 }
 //在AT24CXX里面的指定地址开始写入长度为Len的数据
 //该函数用于写入16bit或者32bit的数据.

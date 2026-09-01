@@ -12,6 +12,7 @@
 volatile u32 SysTick_Count = 0;          /* 100ms心跳计数(由TIM2中断累加) */
 SemaphoreHandle_t USART1_TxMutex;        /* 串口打印互斥量 */
 SemaphoreHandle_t OLED_Mutex;            /* OLED互斥量 */
+SemaphoreHandle_t IIC_Mutex;             /* 软件I2C总线互斥量(AHT20+24C02共用PB6/7) */
 TaskHandle_t SystemTask_Handle;          /* 状态机任务句柄 */
 TaskHandle_t KeyTask_Handle;             /* 按键任务句柄 */
 TaskHandle_t CloudTask_Handle;           /* 云平台任务句柄 */
@@ -41,8 +42,9 @@ void App_Task_Init(void)
 {
 	USART1_TxMutex = xSemaphoreCreateMutex();   /* 串口打印互斥量 */
 	OLED_Mutex = xSemaphoreCreateMutex();       /* OLED互斥量 */
+	IIC_Mutex = xSemaphoreCreateMutex();        /* 软件I2C总线(PB6/7: AHT20+24C02)互斥量 */
 
-	if(USART1_TxMutex == NULL || OLED_Mutex == NULL)
+	if(USART1_TxMutex == NULL || OLED_Mutex == NULL || IIC_Mutex == NULL)
 		Fault_Loop();
 
 	StateMachine_Init();                        /* 状态机初始状态复位 */
