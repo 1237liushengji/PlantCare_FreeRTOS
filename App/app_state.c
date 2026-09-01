@@ -40,6 +40,15 @@ void StateMachine_Set(SysState_t state)
         g_plant.sys.run_mode = 0;    /* 自动 */
     else if(state == SYS_MANUAL)
         g_plant.sys.run_mode = 1;    /* 手动(APP) */
+
+    /* 进入错误态: 关闭全部执行机构, 防止水泵/风扇/补光灯/加湿器保持开启 */
+    if(state == SYS_ERROR)
+    {
+        WATER = 0;
+        FAN   = 0;
+        LED_zm = 0;
+        JSQ   = 0;
+    }
 }
 
 void StateMachine_Run(void)

@@ -171,7 +171,7 @@ static u8 WIFI_Init_Inner(void)
 	OLED_Clear();
 	OLED_ShowCH(0, 2, (u8*)"JOIN AP");
 	sprintf(cmd, "AT+CWJAP=\"%s\",\"%s\"\r\n", WIFI_SSID, WIFI_PASSWORD);
-	if(Wifi_SendCheck(cmd, 30) != 0)
+	if(Wifi_SendCheck(cmd, 50) != 0)   /* CWJAP单次超时5s(路由器响应慢时更容易成功) */
 	{
 		LOG_ERROR("WiFi Connect Error");
 		Wifi_FailShow("JOIN AP");
