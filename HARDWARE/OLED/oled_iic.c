@@ -14,15 +14,17 @@ unsigned int HZ=0;
 unsigned int GB16_NUM(void)
 {
   unsigned int HZ_NUM = 0;
+  unsigned int guard = 0;          /* 扫描保护上限: 防止字库数据异常(缺失终止符)时死循环 */
   const unsigned char *PT;
   PT = hz_index;
-  while(*PT != '\0')
+  while(*PT != '\0' && guard < 2048u)   /* 字库实际约200字节, 2048上限足够且不可能死循环 */
   {
   	 if((*PT & 0xC0) == 0xC0)   /* UTF-8 2/3字节编码的首字节 */
   	 {
   	 	HZ_NUM++;
   	 }
   	 PT++;
+  	 guard++;
   }
 
   return HZ_NUM;
