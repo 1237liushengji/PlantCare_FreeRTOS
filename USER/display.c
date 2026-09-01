@@ -93,9 +93,9 @@ void Display_MainPage(void)
 	OLED_ShowCH(0, 0, (u8*)"土壤:");
 	if(g_plant.sensor.soil_humi == 0)
 	{
-		/* 土壤读数0(传感器开路/异常): 数值"--", 状态"异常", 温度/湿度/光照照常显示 */
+		/* 土壤读数0(传感器开路/异常): 数值与状态均显示"--", 温度/湿度/光照照常显示 */
 		OLED_ShowCH(40, 0, (u8*)"--");
-		OLED_ShowCH(96, 0, (u8*)"异常");
+		OLED_ShowCH(96, 0, (u8*)"--");
 	}
 	else
 	{

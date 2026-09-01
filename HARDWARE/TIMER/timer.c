@@ -45,8 +45,8 @@ void TIM2_IRQHandler(void)
 }
 
 /* ==================== TIM3_CH3(PB0) PWM: 风扇无级调速 ==================== */
-#define FAN_PWM_ARR  999    /* 自动重装载值: 配合PSC得到1kHz PWM */
-#define FAN_PWM_PSC  71     /* 预分频: 72MHz/72 = 1MHz计数 */
+#define FAN_PWM_ARR  2879    /* 自动重装载值: 72MHz/2880 = 25kHz(人耳不可闻, 消除电机啸叫) */
+#define FAN_PWM_PSC  0       /* 预分频: 72MHz直接计数 */
 
 void TIM3_PWM_Init(void)
 {

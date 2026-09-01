@@ -598,15 +598,17 @@ void Sensor_Update(void)
 	}
 }
 
-/* 温度超出阈值时的风扇转速: 每超1°C增加10%转速, 最高100% */
+/* 温度超出阈值时的风扇转速(阈值默认30℃):
+ *   温度 ≤ 阈值      → 0%   (停)
+ *   阈值 < 温度 ≤ 阈值+5 → 50%  (30~35℃半速)
+ *   温度 > 阈值+5     → 100% (35℃以上全速) */
 static u8 Fan_SpeedFromTemp(u8 temp, u8 thresh)
 {
-	u8 speed;
-
-	if(temp <= thresh)
-		return 0;
-	speed = (u8)((temp - thresh) * 10u);
-	return (speed > 100u) ? 100u : speed;
+	if(temp > (u8)(thresh + 5))
+		return 100u;
+	if(temp > thresh)
+		return 50u;
+	return 0u;
 }
 
 /* 自动模式根据阈值控制执行机构并记录报警标志 */
